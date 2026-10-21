@@ -240,18 +240,26 @@ abstract class RustTask : DefaultTask() {
                 environment("ANDROID_NDK_HOME", ndk)
                 environment("ANDROID_NDK_ROOT", ndk)
                 // cc-rs memakai variabel ini untuk memilih linker tiap ABI.
+                // Di Windows alat NDK berupa skrip .cmd; di Linux/macOS tanpa
+                // ekstensi (dan llvm-ar tanpa .exe).
+                val isWindows = System.getProperty("os.name").startsWith("Windows")
+                val clangSuffix = if (isWindows) ".cmd" else ""
+                val arName = if (isWindows) "llvm-ar.exe" else "llvm-ar"
                 val prebuilt = "${ndk}/toolchains/llvm/prebuilt"
                 val host = File(prebuilt).listFiles()?.firstOrNull { it.isDirectory }?.absolutePath
                 if (host != null) {
-                    environment("CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER", "$host/bin/aarch64-linux-android24-clang.cmd")
-                    environment("CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_LINKER", "$host/bin/armv7a-linux-androideabi24-clang.cmd")
-                    environment("CARGO_TARGET_X86_64_LINUX_ANDROID_LINKER", "$host/bin/x86_64-linux-android24-clang.cmd")
-                    environment("CC_aarch64_linux_android", "$host/bin/aarch64-linux-android24-clang.cmd")
-                    environment("CC_armv7_linux_androideabi", "$host/bin/armv7a-linux-androideabi24-clang.cmd")
-                    environment("CC_x86_64_linux_android", "$host/bin/x86_64-linux-android24-clang.cmd")
-                    environment("AR_aarch64_linux_android", "$host/bin/llvm-ar.exe")
-                    environment("AR_armv7_linux_androideabi", "$host/bin/llvm-ar.exe")
-                    environment("AR_x86_64_linux_android", "$host/bin/llvm-ar.exe")
+                    val aarch64 = "$host/bin/aarch64-linux-android24-clang$clangSuffix"
+                    val armv7 = "$host/bin/armv7a-linux-androideabi24-clang$clangSuffix"
+                    val x86 = "$host/bin/x86_64-linux-android24-clang$clangSuffix"
+                    environment("CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER", aarch64)
+                    environment("CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_LINKER", armv7)
+                    environment("CARGO_TARGET_X86_64_LINUX_ANDROID_LINKER", x86)
+                    environment("CC_aarch64_linux_android", aarch64)
+                    environment("CC_armv7_linux_androideabi", armv7)
+                    environment("CC_x86_64_linux_android", x86)
+                    environment("AR_aarch64_linux_android", "$host/bin/$arName")
+                    environment("AR_armv7_linux_androideabi", "$host/bin/$arName")
+                    environment("AR_x86_64_linux_android", "$host/bin/$arName")
                 }
             }
         }
