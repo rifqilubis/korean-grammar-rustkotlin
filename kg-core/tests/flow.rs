@@ -252,7 +252,7 @@ fn latihan_menulis_flow() {
     assert!(!is_correct(t, 0, "salah"));
     assert!(!is_correct(t, 0, ""), "kotak kosong tidak pernah benar");
     assert_eq!(check(t, 0, ""), Check::Empty);
-    assert_eq!(check(t, 0, &first.ko), Check::Ok);
+    assert_eq!(check(t, 0, first.ko), Check::Ok);
     assert_eq!(check(t, 1, "salah"), Check::Bad);
     assert_eq!(inline_result(Check::Ok), "Tepat!");
 
@@ -262,7 +262,7 @@ fn latihan_menulis_flow() {
     assert_eq!(r.status, format!("1 dari {} tepat.", t.lat.len()));
     assert_eq!(r.lines[0].check, Check::Ok);
     assert!(r.lines[1].text.starts_with("Jawaban: "));
-    assert!(r.lines[1].text.contains(&t.lat[1].ko));
+    assert!(r.lines[1].text.contains(t.lat[1].ko));
 }
 
 #[test]
