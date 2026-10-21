@@ -47,6 +47,49 @@ android {
         }
     }
 
+    signingConfigs {
+        // Tanda tangan rilis untuk APK yang dibagikan lewat GitHub Release.
+        // Kunci diambil dari environment (disiapkan di CI) atau dari
+        // ~/.android/keystore.properties untuk build lokal.
+        // Tanpa kunci, APK rilis tetap dibangun tetapi ditandatangani dengan
+        // kunci debug supaya tetap bisa dipasang pengguna.
+        create("release") {
+            // Catatan: `java.util.Properties` TIDAK bisa dirujuk di skrip ini
+            // (AGP membatasi java.* pada compile classpath skrip), jadi file
+            // properti dibaca sebagai teks: "kunci=nilai" per baris.
+            val propsFile = File(System.getProperty("user.home"), ".android/keystore.properties")
+            val props: Map<String, String> =
+                if (propsFile.isFile) {
+                    propsFile.readLines()
+                        .map { it.trim() }
+                        .filter { it.isNotEmpty() && !it.startsWith("#") && it.contains('=') }
+                        .associate { it.substringBefore('=').trim() to it.substringAfter('=').trim() }
+                } else {
+                    emptyMap()
+                }
+
+            fun v(env: String, key: String): String? =
+                System.getenv(env)?.takeIf { it.isNotBlank() } ?: props[key]
+
+            val storePath = v("KG_KEYSTORE_FILE", "storeFile")
+            val storePass = v("KG_KEYSTORE_PASSWORD", "storePassword")
+            val alias = v("KG_KEY_ALIAS", "keyAlias")
+            val keyPass = v("KG_KEY_PASSWORD", "keyPassword")
+            if (storePath != null && storePass != null && alias != null) {
+                storeFile = File(storePath)
+                storePassword = storePass
+                keyAlias = alias
+                keyPassword = keyPass ?: storePass
+            } else {
+                logger.lifecycle("Kunci rilis tidak tersedia: APK rilis memakai kunci debug")
+                storeFile = File(System.getProperty("user.home"), ".android/debug.keystore")
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+            }
+        }
+    }
+
     buildTypes {
         debug {
             applicationIdSuffix = ".debug"
@@ -63,6 +106,7 @@ android {
         release {
             isMinifyEnabled = false
             isShrinkResources = false
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

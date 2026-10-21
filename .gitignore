@@ -13,6 +13,12 @@ android/*.iml
 *.hprof
 .kotlin/
 
+# Kunci tanda tangan: JANGAN pernah masuk repo.
+*.keystore
+*.jks
+keystore.properties
+android/release.keystore
+
 # Hasil sementara
 out/
 *.apk
