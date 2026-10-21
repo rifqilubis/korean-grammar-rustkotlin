@@ -3,6 +3,10 @@
 Aplikasi Android native untuk belajar tata bahasa Korea, hasil port dari versi
 web/PWA [`korean-grammar`](../korean-grammar).
 
+> **⬇️ Unduh APK:** halaman [Releases](../../releases/latest) — ambil
+> `korean-grammar-<versi>.apk`, buka di ponsel, lalu izinkan "instal dari
+> sumber tidak dikenal". Butuh Android 7.0 ke atas; tanpa izin, 100% offline.
+
 **Hampir semua logika ditulis di Rust.** Kotlin hanya dipakai untuk hal yang
 memang harus di Android: menggambar layar (Jetpack Compose) dan memanggil
 mesin suara bawaan sistem (TextToSpeech).
@@ -130,14 +134,42 @@ cargo test --workspace
 cd android
 ./gradlew assembleDebug
 
-# APK rilis (belum ditandatangani)
+# APK rilis (ditandatangani dengan kunci dari environment)
 ./gradlew assembleRelease
 
 # uji unit Kotlin terhadap pustaka Rust
 ./gradlew testDebugUnitTest
 ```
 
-Hasilnya di `android/app/build/outputs/apk/debug/app-debug.apk`.
+Hasilnya di `android/app/build/outputs/apk/debug/app-debug.apk` dan
+`android/app/build/outputs/apk/release/app-release.apk`.
+
+### Menandatangani APK rilis
+
+`assembleRelease` membaca kunci dari environment, atau dari
+`~/.android/keystore.properties` untuk build lokal:
+
+```properties
+storeFile=/path/ke.keystore
+storePassword=...
+keyAlias=...
+keyPassword=...
+```
+
+Nama environment yang setara: `KG_KEYSTORE_FILE`, `KG_KEYSTORE_PASSWORD`,
+`KG_KEY_ALIAS`, `KG_KEY_PASSWORD`. Bila kunci tidak tersedia, APK rilis tetap
+dibangun tetapi memakai kunci debug agar masih bisa dipasang.
+
+Untuk membuat rilis baru yang bisa diunduh pengguna:
+
+```bash
+git tag -a v1.0.1 -m "Korean Grammar 1.0.1"
+git push origin v1.0.1     # CI menandatangani APK dan membuat GitHub Release
+```
+
+CI memakai secrets `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, dan
+`KEY_PASSWORD`. **Pakai kunci yang sama** untuk setiap rilis, supaya pembaruan
+bisa dipasang menimpa versi lama tanpa menghapus data pengguna.
 
 Tanpa `./gradlew`? Pakai `gradle assembleDebug` dari folder `android`.
 NDK dicari lewat `ANDROID_NDK_HOME`, lalu `$ANDROID_HOME/ndk/*`, lalu
