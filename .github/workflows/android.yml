@@ -124,14 +124,45 @@ jobs:
         working-directory: android
         run: ./gradlew testDebugUnitTest -Pkotlin.compiler.execution.strategy=in-process --no-daemon
 
-      - name: Tampilkan APK yang dihasilkan
-        run: ls -lh android/app/build/outputs/apk/debug/
+      # APK rilis ber-tanda tangan untuk dibagikan lewat GitHub Release.
+      # Kunci diambil dari secrets; bila belum diisi, APK tetap dibangun
+      # (memakai kunci debug) supaya rilis tidak gagal total.
+      - name: Bangun APK rilis
+        working-directory: android
+        env:
+          KG_KEYSTORE_FILE: ${{ github.workspace }}/keystore.b64
+          KG_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KG_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KG_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ] && [ -n "$KG_KEYSTORE_PASSWORD" ] && [ -n "$KG_KEY_ALIAS" ]; then
+            echo "::notice::Memakai kunci rilis dari secrets"
+            printf '%s' "$KEYSTORE_B64" | base64 -d > "$KG_KEYSTORE_FILE"
+          else
+            echo "::warning::Secrets kunci rilis belum diisi — APK memakai kunci debug"
+            export KG_KEYSTORE_FILE=""
+          fi
+          ./gradlew assembleRelease -Pkotlin.compiler.execution.strategy=in-process --no-daemon
+          rm -f "$KG_KEYSTORE_FILE"
 
-      - name: Unggah APK sebagai artifact
+      - name: Tampilkan APK yang dihasilkan
+        run: |
+          ls -lh android/app/build/outputs/apk/debug/
+          ls -lh android/app/build/outputs/apk/release/ || true
+
+      - name: Unggah APK debug sebagai artifact
         uses: actions/upload-artifact@v4
         with:
           name: korean-grammar-rust-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
+      - name: Unggah APK rilis sebagai artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: korean-grammar-rust-release-apk
+          path: android/app/build/outputs/apk/release/*.apk
           if-no-files-found: error
 
       - name: Buat Release (hanya saat push tag v*)
@@ -139,7 +170,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
+          APK=$(ls android/app/build/outputs/apk/release/*.apk | head -n 1)
+          # Nama berkas yang ramah unduhan: korean-grammar-<versi>.apk
+          VERSION="${GITHUB_REF_NAME#v}"
+          cp "$APK" "korean-grammar-${VERSION}.apk"
+          sha256sum "korean-grammar-${VERSION}.apk" > "korean-grammar-${VERSION}.apk.sha256"
           gh release create "${GITHUB_REF_NAME}" \
-            android/app/build/outputs/apk/debug/*.apk \
-            --title "Korean Grammar (Rust) ${GITHUB_REF_NAME}" \
+            "korean-grammar-${VERSION}.apk" \
+            "korean-grammar-${VERSION}.apk.sha256" \
+            --title "Korean Grammar ${GITHUB_REF_NAME}" \
             --generate-notes
