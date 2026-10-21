@@ -14,4 +14,8 @@ repository = "https://github.com/rifqilubis/korean-grammar"
 opt-level = "z"
 lto = true
 codegen-units = 1
-strip = "symbols"
+# JANGAN strip="symbols": uniffi-bindgen membaca metadata UniFFI dari simbol
+# UNIFFI_META_* di pustaka host. Di Linux/macOS strip menghapus simbol itu
+# (muncul "No UniFFI metadata found"), sedangkan di Windows tetap ada — jadi
+# masalah ini tidak terlihat saat build lokal.
+strip = "none"
