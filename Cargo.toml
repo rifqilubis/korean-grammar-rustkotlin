@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["kg-core", "kg-ffi", "kg-ffi/uniffi-bindgen"]
+members = ["kg-core", "kg-ffi", "kg-ffi/uniffi-bindgen", "kg-desktop"]
 exclude = ["android"]
 
 [workspace.package]

@@ -1,24 +1,30 @@
 # 한국어 문법 — Korean Grammar (Rust + Kotlin)
 
-Aplikasi Android native untuk belajar tata bahasa Korea, hasil port dari versi
-web/PWA [`korean-grammar`](../korean-grammar).
+Aplikasi Android native **dan** aplikasi desktop Windows untuk belajar tata
+bahasa Korea, hasil port dari versi web/PWA [`korean-grammar`](../korean-grammar).
 
-> **⬇️ Unduh APK:** halaman [Releases](../../releases/latest) — ambil
+> **⬇️ Unduh APK (Android):** halaman [Releases](../../releases/latest) — ambil
 > `korean-grammar-<versi>.apk`, buka di ponsel, lalu izinkan "instal dari
 > sumber tidak dikenal". Butuh Android 7.0 ke atas; tanpa izin, 100% offline.
 
+> **🖥️ Unduh aplikasi PC (Windows):** di halaman yang sama, ambil
+> `korean-grammar-desktop-<versi>-windows-x64.exe` lalu klik dua kali. Tanpa
+> pemasangan, tanpa izin administrator. Windows 10/11 64-bit.
+
 **Hampir semua logika ditulis di Rust.** Kotlin hanya dipakai untuk hal yang
 memang harus di Android: menggambar layar (Jetpack Compose) dan memanggil
-mesin suara bawaan sistem (TextToSpeech).
+mesin suara bawaan sistem (TextToSpeech). Versi desktop memakai **inti Rust
+yang sama persis** — hanya lapisan penggambar jendelanya yang berbeda.
 
 | | |
 |---|---|
-| Bahasa | Rust 2021 (inti) + Kotlin (UI) |
+| Bahasa | Rust 2021 (inti) + Kotlin (UI Android) + eframe/egui (UI desktop) |
 | Ukuran logika Rust | ~2.800 baris (termasuk materi), **kg-core tanpa dependensi pihak ketiga** |
 | Materi | 10 topik, 82 soal kuis, 32 latihan menulis, 61 contoh kalimat |
-| Izin | **tidak ada** (offline penuh) |
+| Izin | **tidak ada** (Android, offline penuh) |
 | ABI | `arm64-v8a`, `armeabi-v7a`, `x86_64` |
 | minSdk / targetSdk | 24 / 34 |
+| Ukuran berkas | APK ± 7,8 MB · `.exe` Windows ± 3,7 MB |
 
 ---
 
@@ -35,21 +41,30 @@ tugas Rust.**
 | Pencocokan latihan menulis (normalisasi teks Korea) | Rust | `kg-core/src/latihan.rs` |
 | Teks yang dibacakan mesin suara | Rust | `kg-core/src/tts.rs` |
 | Teks UI berbahasa Indonesia, label tombol, badge, statistik | Rust | `kg-core/src/quiz.rs`, `lib.rs` |
-| Navigasi antar layar, tema gelap/terang | Kotlin | `android/.../MainActivity.kt` |
+| Navigasi antar layar, tema gelap/terang (Android) | Kotlin | `android/.../MainActivity.kt` |
 | Menggambar layar (Compose), animasi cincin skor | Kotlin | `android/.../ui/*.kt` |
-| Menyimpan JSON progres ke disk | Kotlin | `android/.../KgApp.kt` |
-| Suara Korea | Kotlin | `android/.../tts/Speaker.kt` |
+| Menyimpan JSON progres ke disk (Android) | Kotlin | `android/.../KgApp.kt` |
+| Suara Korea (Android) | Kotlin | `android/.../tts/Speaker.kt` |
+| Navigasi antar layar, tema, penyimpanan (desktop) | Rust | `kg-desktop/src/{app,store}.rs` |
+| Menggambar jendela (egui), latar & warna, suara (desktop) | Rust | `kg-desktop/src/{ui,palette,audio}.rs` |
 
 Kotlin **tidak** berisi aturan permainan: layar hanya menggambar apa yang
 dikembalikan Rust. Contohnya, tombol di layar hasil berbunyi
 `"Topik berikutnya"` bukan karena Kotlin memutuskan begitu, tetapi karena
 `KG.quizResult()` di Rust mengirim `nextLabel`.
 
+Versi desktop memakai prinsip yang sama, tetapi lebih ketat lagi: jendela
+desktop **tidak punya logika sendiri sama sekali**. Ia memanggil fungsi
+`kg-ffi` yang sama dengan Android (`home()`, `quiz_start()`, `quiz_pick()`,
+`quiz_result()`, `lat_check()`, …) sebagai pustaka Rust biasa — tanpa lapisan
+FFI, karena keduanya sudah Rust. Jadi perilaku Android dan desktop tidak bisa
+menyimpang: kalau teks tombol berubah di Rust, keduanya ikut berubah.
+
 ## 2. Struktur repo
 
 ```
 korean-grammar-rust/
-├─ Cargo.toml              # workspace: kg-core, kg-ffi, kg-ffi/uniffi-bindgen
+├─ Cargo.toml              # workspace: kg-core, kg-ffi, kg-desktop, uniffi-bindgen
 ├─ kg-core/                # inti Rust murni (tanpa dependensi, forbid(unsafe_code))
 │  ├─ src/lib.rs           # model topik, navigasi, tema
 │  ├─ src/model.rs         # Rule, Example, Block, Question, Topic
@@ -60,9 +75,17 @@ korean-grammar-rust/
 │  ├─ src/data_gen.rs      # materi — DIBANGKITKAN, jangan diedit manual
 │  └─ tests/flow.rs        # 9 uji alur (meniru tools/smoke-test.js versi web)
 ├─ kg-ffi/                 # jembatan UniFFI (Record + fungsi untuk Kotlin)
-│  ├─ src/lib.rs
+│  ├─ src/lib.rs           # juga dipakai langsung oleh kg-desktop
 │  ├─ src/kg.udl
 │  └─ tests/ffi_surface.rs # 3 uji kontrak FFI
+├─ kg-desktop/             # aplikasi PC (eframe/egui) — memakai kg-ffi sebagai library
+│  ├─ src/main.rs          # titik masuk: kg_desktop::ui::run()
+│  ├─ src/app.rs           # state + navigasi layar (rute)
+│  ├─ src/ui.rs            # menggambar 5 layar: beranda, materi, kuis, hasil, latihan
+│  ├─ src/palette.rs       # warna & ukuran, sama dengan Theme.kt Android
+│  ├─ src/store.rs         # simpan progres di %APPDATA%\korean-grammar
+│  ├─ src/audio.rs         # suara Korea: SAPI (Windows), say (macOS), espeak (Linux)
+│  └─ tests/               # 12 uji alur + persistensi, tanpa membuka jendela
 ├─ tools/
 │  ├─ gen-data.cjs         # ubah js/data.js versi web -> data_gen.rs
 │  └─ make-icons.py        # buat mipmap dari ikon 512px
@@ -117,6 +140,14 @@ dengan versi web, sehingga data dari `localStorage` bisa dipindahkan apa adanya:
 
 ### Yang dibutuhkan
 
+**Untuk aplikasi desktop** cukup Rust (stable) saja:
+
+* Windows 10/11: Visual Studio Build Tools + komponen "Desktop development with C++"
+* Linux: `build-essential`, `libxkbcommon-dev`, `libgtk-3-dev`
+* macOS: Xcode Command Line Tools
+
+**Tambahan untuk APK Android:**
+
 * Rust (stable) + target Android:
   `rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android`
 * JDK 17
@@ -127,8 +158,16 @@ dengan versi web, sehingga data dari `localStorage` bisa dipindahkan apa adanya:
 ### Perintah
 
 ```bash
-# uji inti Rust
+# uji seluruh Rust (inti + FFI + desktop)
 cargo test --workspace
+
+# aplikasi desktop zaman pengembangan (jendela langsung terbuka)
+cargo run -p kg-desktop
+
+# aplikasi desktop versi rilis
+cargo build --release -p kg-desktop
+#   -> target/release/kg-desktop.exe   (Windows)
+#   -> target/release/kg-desktop       (Linux/macOS)
 
 # APK debug (Rust, binding, dan Kotlin dibangun otomatis)
 cd android
@@ -141,8 +180,32 @@ cd android
 ./gradlew testDebugUnitTest
 ```
 
-Hasilnya di `android/app/build/outputs/apk/debug/app-debug.apk` dan
+Hasil APK di `android/app/build/outputs/apk/debug/app-debug.apk` dan
 `android/app/build/outputs/apk/release/app-release.apk`.
+
+### Aplikasi desktop (Windows/Linux/macOS)
+
+`kg-desktop` adalah aplikasi GUI mandiri: satu berkas yang tinggal diklik,
+tanpa pemasangan, tanpa runtime tambahan. Jendelanya digambar dengan
+[eframe/egui](https://github.com/emilk/egui) — pustaka GUI Rust murni, jadi
+tidak ada WebView, tidak ada Electron, dan tidak ada Node.js.
+
+Yang perlu diketahui:
+
+* **Progres disimpan di** `%APPDATA%\korean-grammar\progress.json` (Windows),
+  `~/.local/share/korean-grammar/` (Linux), atau
+  `~/Library/Application Support/korean-grammar/` (macOS). Formatnya sama
+  persis dengan versi web/Android, jadi isinya bisa dipindah-pindahkan.
+  Set variabel `KG_DATA_DIR` untuk menaruhnya di folder lain.
+* **Pelafalan Korea** memakai suara bawaan sistem: SAPI di Windows,
+  `say` di macOS, `espeak-ng` di Linux. Bila tidak ada suara Korea terpasang,
+  tombol 🔊 tidak ditampilkan (bukan error, hanya tidak tersedia).
+  Di Windows, pasang lewat *Settings → Time & language → Language & region →
+  Add a language → 한국어* (pilih paket **Speech**).
+* **Font 한글** diambil dari font sistem (Malgun Gothic di Windows, Apple SD
+  Gothic di macOS, NanumGothic/Noto CJK di Linux). Di Linux minimal yang tidak
+  punya font Korea, huruf Hangul bisa tampil sebagai kotak — pasang
+  `fonts-nanum` atau `fonts-noto-cjk`.
 
 ### Menandatangani APK rilis
 
@@ -187,7 +250,7 @@ Materi berasal dari aplikasi web, tidak ditulis dua kali. Setelah mengubah
 
 ```bash
 node tools/gen-data.cjs            # tulis ulang kg-core/src/data_gen.rs
-cargo test --workspace             # 36 uji harus hijau
+cargo test --workspace             # 56 uji Rust harus hijau
 ```
 
 Skrip ini memvalidasi data lebih dulu (jumlah topik, 4 pilihan per soal, indeks
@@ -200,13 +263,27 @@ jawaban yang sah) lalu membangkitkan Rust. Ikon peluncur dibuat ulang dengan
 |---|---|---|
 | Unit inti Rust | 19 | `cargo test -p kg-core --lib` |
 | Alur Rust (meniru smoke test web) | 9 | `cargo test -p kg-core --test flow` |
-| Kontrak FFI | 3 | `cargo test -p kg-ffi` |
+| Unit FFI | 5 | `cargo test -p kg-ffi --lib` |
+| Kontrak FFI | 3 | `cargo test -p kg-ffi --test ffi_surface` |
+| Unit desktop (penyimpanan, palette, suara) | 8 | `cargo test -p kg-desktop --lib` |
+| Alur desktop (klik-klik, tanpa jendela) | 10 | `cargo test -p kg-desktop --test flow` |
+| Persistensi desktop (berkas `progress.json`) | 2 | `cargo test -p kg-desktop --test persistence` |
+| **Total Rust** | **56** | `cargo test --workspace` |
 | JVM (memanggil `.so`/`.dll` Rust) | 8 | `./gradlew testDebugUnitTest` |
 
 Uji alur mencakup: kelengkapan 10 topik, menjawab 100% benar, pembahasan
 jawaban salah, perjalanan JSON progres, skor terbaik yang tidak pernah turun,
 latihan menulis, dan navigasi topik. Uji JVM membuktikan pustaka yang
 dipaketkan ke APK punya API dan perilaku yang sama.
+
+Uji desktop menjalankan klik-klik pengguna pada lapisan status tanpa membuka
+jendela: menyelesaikan kuis sampai layar hasil, memastikan badge `100%`
+tersimpan dan terbaca lagi setelah aplikasi dibuka ulang, menjawab salah untuk
+memunculkan pembahasan, latihan menulis (benar/salah/kosong), tema, hapus
+progres, dan membuka kesepuluh topik. Berkas `progress.json` juga diperiksa
+benar-benar dibuat di folder data. Uji ini berjalan berurutan karena `kg-ffi`
+menyimpan satu sesi kuis aktif — sama seperti aplikasinya, yang hanya punya
+satu layar kuis.
 
 ## 7. Berkas yang dibangkitkan (jangan diedit)
 

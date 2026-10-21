@@ -181,3 +181,83 @@ jobs:
             "korean-grammar-${VERSION}.apk.sha256" \
             --title "Korean Grammar ${GITHUB_REF_NAME}" \
             --generate-notes
+
+  # Aplikasi desktop (.exe) harus dibangun di Windows — bukan karena kode
+  # Rust-nya berbeda, tetapi karena hasilnya berkas .exe untuk Windows.
+  # Job ini menempelkan .exe ke Release yang dibuat job `build`.
+  desktop-windows:
+    name: Build aplikasi desktop Windows
+    runs-on: windows-latest
+    needs: rust-tests
+
+    steps:
+      - name: Ambil kode
+        uses: actions/checkout@v4
+
+      - name: Pasang toolchain Rust
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+          rustc --version
+
+      - name: Cache cargo (desktop)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-desktop-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-desktop-
+
+      # Uji alur desktop di mesin Windows yang sebenarnya, sebelum build rilis.
+      - name: Uji aplikasi desktop
+        run: cargo test -p kg-desktop
+
+      - name: Build rilis desktop
+        run: cargo build --release -p kg-desktop
+
+      - name: Kemas .exe dengan nama ramah unduhan
+        id: pack
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          if [ -z "$VERSION" ] || [ "$VERSION" = "$GITHUB_REF_NAME" ]; then
+            VERSION="0.0.0-${GITHUB_SHA::7}"
+          fi
+          NAME="korean-grammar-desktop-${VERSION}-windows-x64.exe"
+          cp target/release/kg-desktop.exe "$NAME"
+          sha256sum "$NAME" > "$NAME.sha256"
+          ls -lh "$NAME"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Unggah .exe sebagai artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: korean-grammar-desktop-windows
+          path: |
+            korean-grammar-desktop-*-windows-x64.exe
+            korean-grammar-desktop-*-windows-x64.exe.sha256
+          if-no-files-found: error
+
+      # Release dibuat oleh job `build`; di sini hanya menambah berkas .exe.
+      - name: Lampirkan .exe ke Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXE: ${{ steps.pack.outputs.name }}
+        run: |
+          set -euo pipefail
+          # Tunggu sebentar kalau job `build` belum selesai membuat Release.
+          for i in $(seq 1 30); do
+            if gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" > /dev/null 2>&1; then
+              break
+            fi
+            echo "menunggu Release ${GITHUB_REF_NAME} (percobaan $i/30)..."
+            sleep 20
+          done
+          gh release upload "${GITHUB_REF_NAME}" "$EXE" "$EXE.sha256" \
+            --repo "${GITHUB_REPOSITORY}" --clobber
+          echo "::notice::$EXE terlampir ke Release"

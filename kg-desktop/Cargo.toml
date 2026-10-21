@@ -1,0 +1,27 @@
+[package]
+name = "kg-desktop"
+version.workspace = true
+edition.workspace = true
+rust-version = "1.80"
+license.workspace = true
+description = "Aplikasi desktop (Windows/Linux/macOS) untuk 한국어 문법, bertenaga Rust."
+default-run = "kg-desktop"
+
+[[bin]]
+name = "kg-desktop"
+path = "src/main.rs"
+
+[lib]
+name = "kg_desktop"
+path = "src/lib.rs"
+
+[dependencies]
+# Semua logika aplikasi tetap di kg-ffi/kg-core. Crate ini hanya menggambar.
+kg-ffi = { path = "../kg-ffi" }
+kg-core = { path = "../kg-core" }
+eframe = "0.29"
+egui = "0.29"
+
+[dev-dependencies]
+# untuk uji logika tanpa membuka jendela
+tempfile = "3"
