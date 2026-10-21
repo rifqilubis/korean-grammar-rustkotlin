@@ -1,0 +1,16 @@
+# Skrip shell harus tetap LF, kalau tidak akan gagal dijalankan di Linux/macOS
+# (termasuk di runner GitHub Actions).
+* text=auto eol=lf
+
+gradlew text eol=lf
+*.sh text eol=lf
+
+# Skrip Windows justru butuh CRLF.
+*.bat text eol=crlf
+
+# Berkas biner: jangan pernah diubah baris barunya.
+*.png binary
+*.jpg binary
+*.jar binary
+*.apk binary
+*.aab binary

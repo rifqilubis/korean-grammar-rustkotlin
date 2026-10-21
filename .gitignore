@@ -1,0 +1,24 @@
+# Rust
+/target/
+**/*.rs.bk
+
+# Android / Gradle
+.gradle/
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.idea/
+android/*.iml
+*.hprof
+.kotlin/
+
+# Hasil sementara
+out/
+*.apk
+!android/app/build/outputs/apk/**
+
+# Sistem operasi / editor
+.DS_Store
+Thumbs.db
+.vscode/

@@ -1,0 +1,22 @@
+[package]
+name = "kg-ffi"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Jembatan UniFFI: mengekspos inti Rust kg-core ke Kotlin (Android)."
+
+[lib]
+name = "kg_ffi"
+crate-type = ["cdylib", "staticlib", "lib"]
+path = "src/lib.rs"
+
+[dependencies]
+kg-core = { path = "../kg-core" }
+uniffi = "0.32.2"
+
+[build-dependencies]
+uniffi = { version = "0.32.2", features = ["build"] }
+
+[dev-dependencies]
+uniffi = { version = "0.32.2", features = ["bindgen"] }

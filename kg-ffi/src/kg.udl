@@ -1,0 +1,5 @@
+// Catatan: seluruh isi antarmuka dideklarasikan lewat atribut
+// #[uniffi::export] / #[derive(uniffi::Record)] di src/lib.rs (proc-macro
+// mode). Berkas UDL ini hanya dipakai untuk memicu scaffolding UniFFI,
+// jadi namespace kosong di bawah ini sudah cukup.
+namespace kg {};

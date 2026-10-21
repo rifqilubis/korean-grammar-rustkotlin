@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Warna aksen [accent] dari css/style.css -->
+    <color name="accent">#E14B6A</color>
+    <color name="ic_launcher_background">#E14B6A</color>
+</resources>
